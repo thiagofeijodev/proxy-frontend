@@ -15,8 +15,18 @@ An Nginx configuration that dynamically routes subdomains to separate instances 
 ## ⚙️ Requirements
 
 * **Nginx**
-* **Docker** (optional, for containerized applications)
+* **Docker** (for containerized applications)
 * **Application Instances**: Ensure each application instance is running on a unique port.
+
+---
+
+## 🔧 Environment Variables
+
+Configure the following environment variables:
+
+* **`BASE_URL_S3`**: The base URL for S3 storage (e.g., `https://s3.amazonaws.com/your-bucket`)
+* **`BASE_DOMAIN`**: The base domain for subdomain routing (e.g., `example.com`)
+* **`BASE_EXTENSION`**: The extension or port mapping for application instances (e.g., `app`, `instance`)
 
 ---
 
@@ -29,67 +39,48 @@ git clone https://github.com/thiagofeijodev/proxy-frontend.git
 cd proxy-frontend
 ```
 
-### 2. Configure Nginx
+### 2. Set Environment Variables
 
-Edit the `nginx.conf` file to define server blocks for each subdomain and map them to the corresponding application instance ports.
-
-### 3. Start Nginx
+Create a `.env` file in the project root or export the variables:
 
 ```bash
-sudo nginx -t   # Test configuration
-sudo systemctl reload nginx   # Apply changes
+export BASE_URL_S3="https://s3.amazonaws.com/your-bucket"
+export BASE_DOMAIN="example.com"
+export BASE_EXTENSION="app"
 ```
 
-### 4. (Optional) Use Docker
+### 3. Install and Run with Docker
 
-If your application instances are containerized, you can use Docker to manage them. Ensure each container is mapped to a unique port and update the Nginx configuration accordingly.
-
----
-
-## 📄 Example Nginx Configuration
-
-```nginx
-server {
-    listen 80;
-    server_name app1.example.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-server {
-    listen 80;
-    server_name app2.example.com;
-
-    location / {
-        proxy_pass http://127.0.0.1:3002;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-This configuration routes requests from `app1.example.com` to the application instance running on port 3001 and requests from `app2.example.com` to the instance on port 3002.
-
----
-
-## 🔄 Scaling the Application
-
-To add a new application instance:
-
-1. **Deploy** a new instance of your application on a unique port (e.g., port 3003).
-2. **Update** the Nginx configuration to include a new server block for the new subdomain and port.
-3. **Reload** Nginx to apply the changes:
+#### Build the Docker Image
 
 ```bash
-sudo systemctl reload nginx
+docker build -t proxy-frontend:latest .
+```
+
+#### Run the Docker Container
+
+```bash
+docker run -d \
+  --name proxy-frontend \
+  -p 80:80 \
+  -p 443:443 \
+  -e BASE_URL_S3="$BASE_URL_S3" \
+  -e BASE_DOMAIN="$BASE_DOMAIN" \
+  -e BASE_EXTENSION="$BASE_EXTENSION" \
+  proxy-frontend:latest
+```
+
+Or using the provided script:
+
+```bash
+chmod +x init-docker.sh
+./init-docker.sh
+```
+
+### 5. Test Nginx Configuration
+
+```bash
+docker exec proxy-frontend nginx -t
 ```
 
 ---
